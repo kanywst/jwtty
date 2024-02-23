@@ -1,10 +1,28 @@
 # jwtty
 
 - [jwtty](#jwtty)
-  - [example usage](#example-usage)
-    - [JWK Server](#jwk-server)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Usage](#usage)
 
-## example usage
+## Overview
+
+This package provides functionalities for creating and verifying JSON Web Tokens (JWT) in Go (Golang). It supports both RSA and ECDSA algorithms for signing and verification of JWTs. Additionally, it offers the ability to run a JSON Web Key (JWK) server for dynamically retrieving public keys used in JWT verification.
+
+## Features
+
+- Create JWTs signed with RSA or ECDSA algorithms.
+- Verify JWTs using public keys for RSA or ECDSA.
+- Run a JWK server for dynamic retrieval of public keys used in JWT verification.
+
+## Installation
+
+```bash
+go get -u github.com/kanywst/jwtty
+```
+
+## Usage
 
 ```golang
 package main
@@ -111,10 +129,8 @@ $ go run main.go
 2024/02/23 20:22:28 JWT is valid
 ```
 
-### JWK Server
-
 ```bash
-curl localhost:8080/jwk
+$ curl localhost:8080/jwk
 {"kty":"RSA","alg":"RS256","use":"sig","n":"${masked}","e":"AAEAAQ"}
 ```
 

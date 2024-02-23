@@ -32,7 +32,7 @@ type JWK struct {
 func JWKServer(addr, endpoint, publicPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	http.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-		JWKHandler(w, r, publicPath)
+		jwkHandler(w, r, publicPath)
 	})
 	log.Println("JWK Server starting...")
 	go func() {
@@ -42,7 +42,7 @@ func JWKServer(addr, endpoint, publicPath string, wg *sync.WaitGroup) {
 	}()
 }
 
-func JWKHandler(w http.ResponseWriter, r *http.Request, p string) {
+func jwkHandler(w http.ResponseWriter, r *http.Request, p string) {
 	publicKeyBytes, err := ioutil.ReadFile(p)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to read public key file: %v", err), http.StatusInternalServerError)
