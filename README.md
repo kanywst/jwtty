@@ -29,6 +29,7 @@ package main
 
 import (
     "log"
+    "os"
     "sync"
     "time"
 
@@ -64,17 +65,43 @@ func main() {
     log.Println("Created JWT signed with EC:", jwtEC)
 
     // Verify JWT with RSA public key.
-    log.Println("Verify JWT signed with RSA...")
-    err = jwtty.Verify(jwtRSA, "public.rsa.pem")
+    log.Println("Verify JWT signed with RSA public key...")
+    rsaPublicKeyFile := "public.rsa.pem"
+    rsaPublicKeyBytes, err := os.ReadFile(rsaPublicKeyFile)
+    if err != nil {
+        log.Println("err:", err)
+        return
+    }
+
+    rsaPublicKey, err := jwtty.ParsePublicKeyFromPEM(rsaPublicKeyBytes)
+    if err != nil {
+        log.Println("err:", err)
+        return
+    }
+
+    err = jwtty.VerifyWithKey(jwtRSA, rsaPublicKey)
     if err != nil {
         log.Println("err:", err)
     } else {
         log.Println("JWT is valid")
     }
 
-    // Verify JWT with EC public key.
-    log.Println("Verify JWT signed with EC...")
-    err = jwtty.Verify(jwtEC, "public.ec.pem")
+    // Verify JWT with ECDSA public key.
+    log.Println("Verify JWT signed with ECDSA public key...")
+    ecPublicKeyFile := "public.ec.pem"
+    ecPublicKeyBytes, err := os.ReadFile(ecPublicKeyFile)
+    if err != nil {
+        log.Println("err:", err)
+        return
+    }
+
+    ecPublicKey, err := jwtty.ParsePublicKeyFromPEM(ecPublicKeyBytes)
+    if err != nil {
+        log.Println("err:", err)
+        return
+    }
+
+    err = jwtty.VerifyWithKey(jwtEC, ecPublicKey)
     if err != nil {
         log.Println("err:", err)
     } else {
