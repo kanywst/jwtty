@@ -11,32 +11,51 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func SignWithRSA(c jwt.MapClaims, p string) (string, error) {
-	key, err := parsePrivateKey(p)
+// Signer interface defines methods for generating JWTs.
+type Signer interface {
+	Sign(c jwt.MapClaims) (string, error)
+}
+
+// RSASigner is an implementation of the Signer interface for generating JWTs using RSA algorithm.
+type RSASigner struct {
+	privateKeyPath string
+}
+
+// NewRSASigner creates a new RSASigner.
+func NewRSASigner(privateKeyPath string) *RSASigner {
+	return &RSASigner{privateKeyPath: privateKeyPath}
+}
+
+// Sign is the method for RSASigner to generate JWTs.
+func (rs *RSASigner) Sign(c jwt.MapClaims) (string, error) {
+	key, err := parsePrivateKey(rs.privateKeyPath)
 	if err != nil {
 		return "", err
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, c)
-	signedToken, err := sign(token, key)
-	if err != nil {
-		return "", err
-	}
-	return signedToken, nil
+	return sign(token, key)
 }
 
-func SignWithECDSA(c jwt.MapClaims, p string) (string, error) {
-	key, err := parsePrivateKey(p)
+// ECDSASigner is an implementation of the Signer interface for generating JWTs using ECDSA algorithm.
+type ECDSASigner struct {
+	privateKeyPath string
+}
+
+// NewECDSASigner creates a new ECDSASigner.
+func NewECDSASigner(privateKeyPath string) *ECDSASigner {
+	return &ECDSASigner{privateKeyPath: privateKeyPath}
+}
+
+// Sign is the method for ECDSASigner to generate JWTs.
+func (es *ECDSASigner) Sign(c jwt.MapClaims) (string, error) {
+	key, err := parsePrivateKey(es.privateKeyPath)
 	if err != nil {
 		return "", err
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, c)
-	signedToken, err := sign(token, key)
-	if err != nil {
-		return "", err
-	}
-	return signedToken, nil
+	return sign(token, key)
 }
 
 func sign(token *jwt.Token, key interface{}) (string, error) {

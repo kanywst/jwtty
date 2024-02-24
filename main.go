@@ -20,15 +20,17 @@ func main() {
 
 	// Create JWT with RSA
 	log.Println("Create JWT signed with RSA...")
-	jwt, err := jwtty.SignWithRSA(claims, "private.rsa.pem")
+	rsaSigner := jwtty.NewRSASigner("./private.rsa.pem")
+	jwtRSA, err := rsaSigner.Sign(claims)
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("Created JWT signed with RSA:", jwt)
+	log.Println("Created JWT signed with RSA:", jwtRSA)
 
 	// Create JWT with EC
 	log.Println("Create JWT signed with EC...")
-	jwtEC, err := jwtty.SignWithECDSA(claims, "private.ec.pem")
+	ecSigner := jwtty.NewECDSASigner("./private.ec.pem")
+	jwtEC, err := ecSigner.Sign(claims)
 	if err != nil {
 		log.Println(err)
 	}
@@ -36,7 +38,7 @@ func main() {
 
 	// Verify JWT with RSA public key.
 	log.Println("Verify JWT signed with RSA...")
-	err = jwtty.Verify(jwt, "public.rsa.pem")
+	err = jwtty.Verify(jwtRSA, "public.rsa.pem")
 	if err != nil {
 		log.Println("err:", err)
 	} else {
@@ -60,7 +62,7 @@ func main() {
 
 	// Verify JWT with RSA on the JWK server
 	log.Println("Verify JWT with RSA on the JWK server")
-	err = jwtty.VerifyFromJWKServer(jwt, "http://localhost:8080/jwk")
+	err = jwtty.VerifyFromJWKServer(jwtRSA, "http://localhost:8080/jwk")
 	if err != nil {
 		log.Println("err:", err)
 	} else {
