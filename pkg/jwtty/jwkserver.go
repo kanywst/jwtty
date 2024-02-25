@@ -10,40 +10,41 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 )
 
-// JWK struct represents a JSON Web Key
-type JWK struct {
-	Kty string `json:"kty"`
-	Alg string `json:"alg"`
-	Use string `json:"use"`
-	N   string `json:"n,omitempty"`
-	E   string `json:"e,omitempty"`
-	X   string `json:"x,omitempty"`
-	Y   string `json:"y,omitempty"`
-	Crv string `json:"crv,omitempty"`
-}
-
 func JWKServer(addr, endpoint, publicPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	http.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-		JWKHandler(w, r, publicPath)
+		jwkHandler(w, r, publicPath)
 	})
-	log.Println("JWK Server starting...")
-	go func() {
-		if err := http.ListenAndServe(addr, nil); err != nil {
-			log.Fatalf("JWK Server failed to start: %v", err)
-		}
-	}()
+
+	log.Printf("JWK Server starting on %s%s\n", addr, endpoint)
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		log.Fatalf("JWK Server failed to start: %v", err)
+	}
 }
 
-func JWKHandler(w http.ResponseWriter, r *http.Request, p string) {
-	publicKeyBytes, err := ioutil.ReadFile(p)
+func jwkHandler(w http.ResponseWriter, r *http.Request, p string) {
+	file, err := os.Open(p)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to open public key file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get file info: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	publicKeyBytes := make([]byte, fileInfo.Size())
+	_, err = file.Read(publicKeyBytes)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to read public key file: %v", err), http.StatusInternalServerError)
 		return
@@ -55,19 +56,7 @@ func JWKHandler(w http.ResponseWriter, r *http.Request, p string) {
 		return
 	}
 
-	var pub interface{}
-	switch block.Type {
-	case "PUBLIC KEY":
-		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
-	case "EC PUBLIC KEY":
-		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
-	case "RSA PUBLIC KEY":
-		pub, err = x509.ParsePKIXPublicKey(block.Bytes)
-	default:
-		http.Error(w, "Unsupported public key type", http.StatusInternalServerError)
-		return
-	}
-
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to parse public key: %v", err), http.StatusInternalServerError)
 		return
@@ -83,8 +72,7 @@ func JWKHandler(w http.ResponseWriter, r *http.Request, p string) {
 			X:   encodeToBase64URL(pub.X.Bytes()),
 			Y:   encodeToBase64URL(pub.Y.Bytes()),
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(jwk)
+		writeJSONResponse(w, jwk)
 	case *rsa.PublicKey:
 		jwk := JWK{
 			Kty: "RSA",
@@ -93,8 +81,7 @@ func JWKHandler(w http.ResponseWriter, r *http.Request, p string) {
 			N:   encodeToBase64URL(pub.N.Bytes()),
 			E:   encodeToBase64URL(bigEndianBytes(int(pub.E))),
 		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(jwk)
+		writeJSONResponse(w, jwk)
 	default:
 		http.Error(w, "Unsupported public key type", http.StatusInternalServerError)
 	}
@@ -123,15 +110,9 @@ func getCurveName(curve elliptic.Curve) string {
 	}
 }
 
-func getCurveByName(name string) elliptic.Curve {
-	switch name {
-	case "P-256":
-		return elliptic.P256()
-	case "P-384":
-		return elliptic.P384()
-	case "P-521":
-		return elliptic.P521()
-	default:
-		return nil
+func writeJSONResponse(w http.ResponseWriter, jwk JWK) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(jwk); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to encode JSON: %v", err), http.StatusInternalServerError)
 	}
 }

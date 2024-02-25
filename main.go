@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -20,32 +21,60 @@ func main() {
 
 	// Create JWT with RSA
 	log.Println("Create JWT signed with RSA...")
-	jwt, err := jwtty.SignWithRSA(claims, "private.rsa.pem")
+	rsaSigner := jwtty.NewRSASigner("./private.rsa.pem")
+	jwtRSA, err := rsaSigner.Sign(claims)
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println("Created JWT signed with RSA:", jwt)
+	log.Println("Created JWT signed with RSA:", jwtRSA)
 
 	// Create JWT with EC
 	log.Println("Create JWT signed with EC...")
-	jwtEC, err := jwtty.SignWithECDSA(claims, "private.ec.pem")
+	ecSigner := jwtty.NewECDSASigner("./private.ec.pem")
+	jwtEC, err := ecSigner.Sign(claims)
 	if err != nil {
 		log.Println(err)
 	}
 	log.Println("Created JWT signed with EC:", jwtEC)
 
 	// Verify JWT with RSA public key.
-	log.Println("Verify JWT signed with RSA...")
-	err = jwtty.Verify(jwt, "public.rsa.pem")
+	log.Println("Verify JWT signed with RSA public key...")
+	rsaPublicKeyFile := "public.rsa.pem"
+	rsaPublicKeyBytes, err := os.ReadFile(rsaPublicKeyFile)
+	if err != nil {
+		log.Println("err:", err)
+		return
+	}
+
+	rsaPublicKey, err := jwtty.ParsePublicKeyFromPEM(rsaPublicKeyBytes)
+	if err != nil {
+		log.Println("err:", err)
+		return
+	}
+
+	err = jwtty.VerifyWithKey(jwtRSA, rsaPublicKey)
 	if err != nil {
 		log.Println("err:", err)
 	} else {
 		log.Println("JWT is valid")
 	}
 
-	// Verify JWT with EC public key.
-	log.Println("Verify JWT signed with EC...")
-	err = jwtty.Verify(jwtEC, "public.ec.pem")
+	// Verify JWT with ECDSA public key.
+	log.Println("Verify JWT signed with ECDSA public key...")
+	ecPublicKeyFile := "public.ec.pem"
+	ecPublicKeyBytes, err := os.ReadFile(ecPublicKeyFile)
+	if err != nil {
+		log.Println("err:", err)
+		return
+	}
+
+	ecPublicKey, err := jwtty.ParsePublicKeyFromPEM(ecPublicKeyBytes)
+	if err != nil {
+		log.Println("err:", err)
+		return
+	}
+
+	err = jwtty.VerifyWithKey(jwtEC, ecPublicKey)
 	if err != nil {
 		log.Println("err:", err)
 	} else {
@@ -60,7 +89,7 @@ func main() {
 
 	// Verify JWT with RSA on the JWK server
 	log.Println("Verify JWT with RSA on the JWK server")
-	err = jwtty.VerifyFromJWKServer(jwt, "http://localhost:8080/jwk")
+	err = jwtty.VerifyFromJWKServer(jwtRSA, "http://localhost:8080/jwk")
 	if err != nil {
 		log.Println("err:", err)
 	} else {
